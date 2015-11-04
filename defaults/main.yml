@@ -1,0 +1,36 @@
+---
+
+# Should upstart be used to manage Docker containers?
+#
+# If upstart is not used, Docker containers should be run with
+# the "always" restart policy.
+#
+# If upstart is used, some extra dependencies will be required
+# (e.g. inotify-tools)
+
+docker_uses_upstart: yes
+
+
+# Version of docker-py library to use.
+#
+# The 1.1.0 version is the most recent version that works with Docker 1.5.0;
+# it has also been shown to work with newer Docker versions (including 1.8.1).
+#
+# Versions after 1.1.0 stopped working with Docker 1.5.0, but continue to work
+# with newer Docker versions (includings 1.8.1).
+#
+# Versions after 1.2.3 stopped working with the current Ansible docker module
+# (as of Ansible 1.9.2).
+
+docker_py_version: 1.2.3
+
+
+# Log rotate interval. Log files will be rotated after this interval.
+
+docker_log_rotate_interval: "daily"
+
+
+# Log files are rotated <log_rotate_count>  times  before  being  removed. 
+# If count is 0, old versions are removed rather then rotated.
+
+docker_log_rotate_count: 3

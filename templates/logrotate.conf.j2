@@ -1,0 +1,8 @@
+/var/lib/docker/containers/*/*-json.log {
+    {{ docker_log_rotate_interval }}
+    rotate {{ docker_log_rotate_count }}
+    missingok
+    compress
+    notifempty
+    copytruncate
+}

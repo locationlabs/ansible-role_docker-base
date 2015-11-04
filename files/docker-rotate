@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Remove docker image and container garbage with docker-rotate
+docker-rotate --clean-images --keep 3 --clean-containers
