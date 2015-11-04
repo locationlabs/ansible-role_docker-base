@@ -1,0 +1,24 @@
+---
+
+- name: install inotify-tools
+  apt: pkg=inotify-tools force=yes
+  when: docker_uses_upstart
+
+- name: install docker-py
+  pip: name=docker-py version="{{ docker_py_version }}"
+
+- name: install docker-rotate
+  pip: name=dockerrotate
+
+- name: install docker-rotate cron script
+  copy: src=docker-rotate dest=/etc/cron.daily/ mode=755
+
+- name: push logrotate config file for docker container json logs
+  template: src=logrotate.conf.j2 dest=/etc/logrotate.d/docker
+
+- name: install docker zombie volumes cleanup cron script
+  copy: src=clear-zombie-docker-data-dirs dest=/etc/cron.daily/ mode=755
+
+- name: push docker configuration
+  template: src=docker.j2 dest=/etc/default/docker
+  notify: restart docker  
