@@ -34,3 +34,7 @@ docker_log_rotate_interval: "daily"
 # If count is 0, old versions are removed rather then rotated.
 
 docker_log_rotate_count: 3
+
+# Version of docker-compose to use.
+# 'latest' to install the newest version
+docker_compose_version: latest
