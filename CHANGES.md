@@ -1,5 +1,9 @@
 # Release Change Log
 
+Version 2.1:
+ - install docker-compose
+ - pre-pull busybox and ubuntu-debootstrap images
+
 Version 2.0:
  - port to github
 
