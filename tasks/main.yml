@@ -22,3 +22,19 @@
 - name: push docker configuration
   template: src=docker.j2 dest=/etc/default/docker
   notify: restart docker  
+
+- name: pull useful images for future use
+  command: docker pull {{ item }}
+  register: docker_result
+  changed_when: '"Downloaded newer image for" in docker_result.stdout'
+  with_items:
+    - busybox
+    - ubuntu-debootstrap:14.04
+
+- name: install docker-compose
+  pip:
+    name: docker-compose
+    state: "{{ (docker_compose_version == 'latest') | ternary('latest', 'present') }}"
+    version: "{{ (docker_compose_version == 'latest') | ternary(omit, docker_compose_version) }}"
+  when: docker_compose_version is defined
+                     
