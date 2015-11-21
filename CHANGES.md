@@ -1,5 +1,8 @@
 # Release Change Log
 
+Version 2.2:
+ - restart docker with new config before prefetching images
+
 Version 2.1:
  - install docker-compose
  - pre-pull busybox and ubuntu-debootstrap images
