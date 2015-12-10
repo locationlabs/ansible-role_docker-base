@@ -1,5 +1,7 @@
 # Release Change Log
-
+Version 2.3:
+ - Update 'clear-zombie' script
+ 
 Version 2.2:
  - restart docker with new config before prefetching images
 
