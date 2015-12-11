@@ -1,63 +1,334 @@
 #!/usr/bin/env python
 """
-Check all existing Docker containers for their mapped paths, and then purge any
-zombie directories in docker's volumes directory which don't corresponding to an
-existing container.
+Check all existing Docker containers for their mounted volumes, and remove any
+volumes/vfs directories which aren't in use.
 
-See discussion on this Docker issue for more info:
+Docker Volumes & Docker Version Migration:
 
-    https://github.com/docker/docker/issues/6354
+There are some differences in how docker versions store volumes which
+introduces some complexity. Newer versions of Docker do not use VFS for
+volumes by default. Upgraded versions of Docker may continue to use VFS, so
+we retain & update this cleanup process for those cases and for backwards
+compatibility.
 
+Additionally, this script takes cleanup a step further and actually removes the
+docker volume directories from the host machine in addition to the previously
+utilized VFS volume directories. It should be noted that Docker does not remove
+volumes when a container is removed *ON PURPOSE*. According to docker:
+
+    Data volumes are designed to persist data, independent of the
+    container's life cycle. Docker therefore never automatically
+    delete volumes when you remove a container, nor will it
+    "garbage collect" volumes that are no longer referenced by
+    a container.
+            - http://docs.docker.com/engine/userguide/dockervolumes/
+
+In essence, this script does some "garbage collecting" which docker doesn't,
+so be sure you've backed up any data that may be of value before running.
+
+This script makes assumptions about how Docker stores volume data on the disk,
+and tries to support the following cases:
+
+ * The "1.5.0" case:
+    - volume metadata in /var/lib/docker/volumes/<ID>/config.json
+    - volume content in /var/lib/docker/vfs/dir/<ID>
+ * The "1.8" case:
+    - volume content in /var/lib/docker/volumes/<ID>/_data
+ * The "1.5 updated to 1.8" case:
+    - volume metadata in /var/lib/docker/volumes/<ID>/config.json
+    - volume content in /var/lib/docker/vfs/dir/<ID>
+    - a symlink to volume content
+        from: /var/lib/docker/volumes/<ID>/_data
+        to: /var/lib/docker/vfs/dir/<ID>
+    - "docker inspect" or equivalent client operation returns the
+        .../volumes path, not .../vfs
+ * The "1.9+" case:
+    - no assumptions made about files on the disk
+    - assume the client supports volume management via API,
+        i.e. "client.volumes()" and "client.remove_volume()"
+
+Supported Versions:
+
+This script has been updated from the original, posted in a discussion for
+a docker issue (see: https://github.com/docker/docker/issues/6354), to work
+with docker 1.8.1 & 1.9.1 while still being backwards compatible with 1.5.0.
+It utilizes version='auto' when initializing the client to ensure it is
+communicating with the servers supported api version.
+
+The goal is to have this script support multiple versions of the python client.
+
+Target docker/docker-py versions:
+  * 1.5.0/1.1.0
+  * 1.8.1/1.3.1
+  * 1.9.1/1.6.0
+
+You can find the version of the python client that is running with:
+    print docker.__version__
+
+You can find the docker version at the commandline:
+    docker --version
+
+Some documentation:
+
+  * https://pypi.python.org/pypi/docker-py
+  * https://readthedocs.org/projects/docker-py/
+  * http://docs.docker.com/engine/userguide/dockervolumes/
+  * http://docs.docker.com/engine/reference/api/docker_remote_api/ (these may
+    not map directly to the available keys returned by calls with the client,
+    see 'Mounts' in api 1.20, for docker 1.8.x, but could be a good resource)
+
+Notes:
+  * The docker documentation mostly identifies volumes by 'name' but this
+    script uses the term 'id' hopefully this isn't confusing for users or
+    future implementors.
+  * It is assumed the docker container is running on the same machine as this
+    script.
+  * It might be useful to note that creating volumes this script would remove
+    can be done simply by removing a container.
+        docker rm container-id       # remove container with name container-id
+        docker rm $(docker ps -a -q) # remove all containers
 """
+
+import json
 import logging
 import os
+import os.path
 from os.path import exists
-import sys
 from shutil import rmtree
+import sys
 
 import docker
+from docker.errors import InvalidVersion
 
-
-DOCKER_VOLUMES_DIR = "/var/lib/docker/vfs/dir"
+DOCKER_VFS_DIR = "/var/lib/docker/vfs/dir"
+DOCKER_VOLUMES_DIR = "/var/lib/docker/volumes"
 
 
 def get_immediate_subdirectories(a_dir):
+    """Return the full directory path of all sub directories for a
+    directory.
+    """
     return [os.path.join(a_dir, name) for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
+
+
+def supports_volumes_api(client):
+    """Check if the client & server support the docker volumes api.
+
+    The volumes api was introduced with docker 1.9.x, api version 1.21
+    (see: docker_remote_api docs for details).
+
+    :param client: The docker client to test
+    :return: Return True if the client & server support the new docker
+                volumes api, False otherwise.
+    """
+    if hasattr(client, 'volumes'):
+        try:
+            client.volumes()
+            return True
+        except InvalidVersion:
+            # client supports it but server doesn't
+            pass
+    # client does not support
+    return False
+
+
+def delete_volume(client, volume_id):
+    """Delete all docker volumes associated with the volume_id on this machine.
+
+    If possible this method will utilize the client volume api to do removal,
+    but will fall back to removing directories named after the volume_id in a
+    few predetermined locations if not supported.
+
+    :param client: The docker client
+    :param volume_id: The volume id to delete
+    """
+    if supports_volumes_api(client):
+        client.remove_volume(volume_id)
+        return
+
+    def clear_path(path):
+        if exists(path):
+            logging.info("Removing path: %s", path)
+            rmtree(path)
+    clear_path(os.path.join(DOCKER_VFS_DIR, volume_id))
+    clear_path(os.path.join(DOCKER_VOLUMES_DIR, volume_id))
+
+
+def get_all_volume_ids(client):
+    """Get all the volume ids on this machine.
+
+    If possible this method will utilize the client volume api to get volume
+    ids, but will fall back to a predetermined location if not supported.
+
+    :param client: The docker client
+    :return: A set of volume ids
+    """
+    if supports_volumes_api(client):
+        # volumes upgraded from 1.5.0 to 1.9 will also be returned here and
+        # they include bind volumes (at least ~1.5.0)
+        # (this is not the case for fresh >=1.8 docker containers)
+        return {v['Name'] for v in (client.volumes()['Volumes'] or [])}
+    else:
+        return {os.path.basename(path)
+                for path in get_immediate_subdirectories(DOCKER_VOLUMES_DIR)}
+
+
+def get_non_bind_volume_ids(client):
+    """Get the volume ids for all non bind volumes.
+
+    :param client: The docker client
+    :return: A set of non bind volume ids
+    """
+    return {id for id in get_all_volume_ids(client)
+            if is_non_bind_volume_id(id)}
+
+
+def is_non_bind_volume_id(id):
+    """Check if the volume a non bind volume.
+
+    :param id: A volume id
+    :return: True if the volume is a non bind volume, False otherwise
+    """
+    config = get_volume_config(id)
+    if config is not None:
+        # We assume IsBindMount directories are not docker volume/vfs
+        return not config['IsBindMount']
+    else:
+        # We assume newer version of docker don't have config.json
+        # files and only has non_bind volumes
+        return True
+
+
+def get_all_container_volume_ids(client):
+    """Get all volume ids connected to some container for this client.
+
+    :param client: The docker client
+    :return: A set of volume ids
+    """
+    return {id for container in get_all_containers(client)
+            for id in get_container_volume_ids(container)}
+
+
+def get_all_containers(client):
+    """Get the 'docker inspect' data for all containers connected this client.
+
+    :param client: The docker client
+    :return: the 'docker inspect' data for each connected container
+    """
+    return [client.inspect_container(container["Id"])
+            for container in client.containers(all=True)]
+
+
+def get_container_volume_ids(container):
+    """Get the volume ids for a container.
+
+    Containers had mounted volumes stored under the 'Volumes' key for some
+    docker versions (at least <=1.5.0). Volumes changed to Mounts somewhere
+    between 1.5.0 to 1.8.1.
+
+    :param container: the container to get volume ids from
+    :return: a set of volume ids associated with the container
+    """
+    ids = set()
+    if 'Volumes' in container:
+        ids |= {get_volume_ids_from_path(path)
+                for _, path in container.get('Volumes', []).iteritems()
+                if get_volume_ids_from_path(path) is not None}
+    if 'Mounts' in container:
+        # we assume mount names are volume ids,
+        # if this isn't a good assumption use 'Source'
+        ids |= {mount['Name'] for mount in container.get('Mounts', [])
+                if 'Name' in mount}
+    return ids
+
+
+def get_volume_ids_from_path(a_path):
+    """Get a volume id mapped as part of a path.
+
+    :param a_path: the path to get a volume id from
+    :return: a volume id, or None
+    """
+    if a_path.startswith(DOCKER_VOLUMES_DIR):
+        # format: /var/lib/docker/volumes/<ID>/?.*
+        return a_path[len(DOCKER_VOLUMES_DIR)+1:].split('/')[0]
+    elif a_path.startswith(DOCKER_VFS_DIR):
+        # format: /var/lib/docker/vfs/dir/<ID>/?.*
+        return a_path[len(DOCKER_VFS_DIR)+1:].split('/')[0]
+    else:
+        # otherwise we can't determine a volume id from path
+        return None
+        # perhaps we could check the path in a config.json?
+        # would need to investigate bind volumes further:
+        # [id for id in get_all_volume_ids(client)
+        #  if volume_config_has_path(get_volume_config(id), a_path)]
+
+
+def get_volume_config(id):
+    """Get the config for a docker volume.
+
+    :param id: The id of the docker volume to get the config for
+    :return: the docker config or None if not available
+    """
+    if volume_has_config_json(id):
+        with open(get_config_json_file_path(id), 'r') as config_json_file:
+            return json.load(config_json_file)
+    else:
+        return None
+
+
+def volume_has_config_json(id):
+    """Check that a docker volume has a config.json.
+
+    config.json is only available with some versions of docker.
+    Docker 1.5.0 volumes have a config.json.
+    As of this writing volumes created with docker >=1.8.x do not.
+
+    :param id: The id of the docker volume to check
+    :return: True if a config file exists, False otherwise
+    """
+    return exists(get_config_json_file_path(id))
+
+
+def get_config_json_file_path(id):
+    """Gets the expected path to a config.json file for a docker
+    volume with the given id.
+
+    The path may not point to an existing file.
+
+    :param id: The id of a docker volume to generate a path for
+    :return: The expected path to a config.json file
+    """
+    return os.path.join(DOCKER_VOLUMES_DIR, id, 'config.json')
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    if not exists(DOCKER_VOLUMES_DIR):
-        # Newer versions of Docker do not use VFS for volumes by default.
-        # Upgraded versions of Docker may continue to use VFS, so retain
-        # this cleanup process for those cases and for backwards compatability.
-        return
+    # use the API version provided by the server
+    client = docker.Client(version='auto')
 
-    client = docker.Client()
+    # get the various types of volumes
+    # we don't start with all volumes due to complexity with bind mount volumes
+    # (perhaps we can fix this in future revision)
+    # all_volume_ids = get_all_volume_ids(client)
+    all_volume_ids = get_non_bind_volume_ids(client)
+    all_container_volume_ids = get_all_container_volume_ids(client)
+    zombie_volume_ids = all_volume_ids.difference(all_container_volume_ids)
 
-    valid_dirs = []
-    for container in client.containers(all=True):
-        volumes = client.inspect_container(container['Id'])['Volumes']
-        if not volumes:
-            continue
+    # info output
+    logging.info("Purging %s zombie docker volumes out of %s total volumes "
+                 + "found, %s remaining.",
+                 len(zombie_volume_ids),
+                 len(all_volume_ids),
+                 len(all_container_volume_ids))
 
-        for _, real_path in volumes.iteritems():
-            if real_path.startswith(DOCKER_VOLUMES_DIR):
-                valid_dirs.append(real_path)
-
-    all_dirs = get_immediate_subdirectories(DOCKER_VOLUMES_DIR)
-    invalid_dirs = set(all_dirs).difference(valid_dirs)
-
-    logging.info("Purging %s dangling Docker volumes out of %s total volumes found.",
-                 len(invalid_dirs), len(all_dirs))
-    for invalid_dir in invalid_dirs:
-        logging.info("Purging directory: %s", invalid_dir)
-        rmtree(invalid_dir)
+    # delete unused volume dirs
+    for volume_id in zombie_volume_ids:
+        logging.info("Purging volume directories for volume_id: %s", volume_id)
+        delete_volume(client, volume_id)
 
     logging.info("All done.")
-
 
 if __name__ == "__main__":
     sys.exit(main())
