@@ -25,6 +25,12 @@ docker_uses_upstart: yes
 docker_py_version: 1.2.3
 
 
+# Version of docker-rotate to use.
+#
+# https://github.com/locationlabs/docker-rotate
+docker_rotate_version: 2.0.1
+
+
 # Log rotate interval. Log files will be rotated after this interval.
 
 docker_log_rotate_interval: "daily"
