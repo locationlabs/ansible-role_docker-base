@@ -8,7 +8,7 @@
   pip: name=docker-py version="{{ docker_py_version }}"
 
 - name: install docker-rotate
-  pip: name=dockerrotate
+  pip: name=dockerrotate version="{{ docker_rotate_version}}"
 
 - name: install docker-rotate cron script
   copy: src=docker-rotate dest=/etc/cron.daily/ mode=755
@@ -21,7 +21,7 @@
 
 - name: push docker configuration
   template: src=docker.j2 dest=/etc/default/docker
-  notify: restart docker  
+  notify: restart docker
 
 - name: install docker-compose
   pip:
