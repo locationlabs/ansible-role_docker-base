@@ -3,5 +3,6 @@
 # Remove docker images keeping the last 3 of each type
 docker-rotate images --keep 3
 # Remove docker containers that have exited over an hour ago
-# and were created over a day ago
-docker-rotate containers --exited 1h --created 1d
+# and were created over a day ago>  Exclude containers based on busybox
+# which are typically used for data volumes.
+docker-rotate containers --exited 1h --created 1d --images ~busybox
