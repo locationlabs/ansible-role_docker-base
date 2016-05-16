@@ -11,7 +11,7 @@
   pip: name=dockerrotate version="{{ docker_rotate_version}}"
 
 - name: install docker-rotate cron script
-  copy: src=docker-rotate dest=/etc/cron.daily/ mode=755
+  template: src=docker-rotate dest=/etc/cron.daily/ mode=755
 
 - name: push logrotate config file for docker container json logs
   template: src=logrotate.conf.j2 dest=/etc/logrotate.d/docker
