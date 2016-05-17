@@ -34,7 +34,7 @@ docker_rotate_version: 2.0.1
 # Python regex of image names to remove. Use a '~' prefix for negative match.
 #
 # https://github.com/locationlabs/docker-rotate
-docker_rotate_containers_images_filter: ~busybox
+docker_rotate_containers_images_regex: ~busybox
 
 # Log rotate interval. Log files will be rotated after this interval.
 
