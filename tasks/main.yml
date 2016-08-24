@@ -1,43 +1,70 @@
 ---
 
-- name: install inotify-tools
-  apt: pkg=inotify-tools force=yes
-  when: docker_uses_upstart
+# The role knows how to write docker_rotate commands for the version 3.0 API, not for earlier
+# versions. 
+- name: check minimum docker_rotate version
+  fail: msg="specified docker_rotate version is {{ docker_rotate_version }}, must be at least 3.0"
+  when: "{{ docker_rotate_version | version_compare('3.0', '<') }}"
 
-- name: install docker-py
-  pip: name=docker-py version="{{ docker_py_version }}"
+# Note escaping required here - we need to pass "{{ .Server.Version }}" to Docker without it
+# being escaped by Ansible. However, normal ways of escaping it will result in the command
+# containing that string, and when we register the result the "cmd" field on the result will also
+# contain it. So next time any kind of templating command is run, Ansible will try to resolve
+# template expressions in all of its variables, including that one, and will show an error.
+# Hence this workaround with shell.
+# In Ansible 2.0, they added the "!unsafe" keyword, which may provide a cleaner way to resolve
+# this.
+- name: Verify that docker is installed and determine installed version
+  shell: 'B="{" && docker version -f "$B$B .Server.Version }}"'
+  changed_when: False
+  always_run: True
+  register: docker_version_result
 
-- name: install docker-rotate
-  pip: name=dockerrotate version="{{ docker_rotate_version}}"
+- name: store installed docker version
+  set_fact:
+    installed_docker_version: "{{ docker_version_result.stdout }}"
+
+# install Python packages with pip. These are all included in the same requirements file, so that
+# we can let Pip sort out any inconsistencies between required versions.
+- name: manage python requirements file
+  template: src=requirements.txt.j2 dest=/etc/docker-python.requirements.txt
+
+# note state=latest here; if you want a fixed version, specify it.
+- name: ensure python reqirements are installed
+  pip: state=latest requirements=/etc/docker-python.requirements.txt
 
 - name: install docker-rotate cron script
-  template: src=docker-rotate dest=/etc/cron.daily/ mode=755
+  template: src=docker-rotate.j2 dest=/etc/cron.daily/docker-rotate mode=755
 
 - name: push logrotate config file for docker container json logs
   template: src=logrotate.conf.j2 dest=/etc/logrotate.d/docker
+  when: "{{ installed_docker_version | version_compare('1.8', '<') }}"
+
+- name: make sure docker logrotate config is removed
+  file: state=absent dest=/etc/logrotate.d/docker
+  when: "{{ installed_docker_version | version_compare('1.8', '>=') }}"
 
 - name: install docker zombie volumes cleanup cron script
   copy: src=clear-zombie-docker-data-dirs dest=/etc/cron.daily/ mode=755
 
 - name: push docker configuration
   template: src=docker.j2 dest=/etc/default/docker
+  register: docker_config_result
   notify: restart docker
-
-- name: install docker-compose
-  pip:
-    name: docker-compose
-    state: "{{ (docker_compose_version == 'latest') | ternary('latest', 'present') }}"
-    version: "{{ (docker_compose_version == 'latest') | ternary(omit, docker_compose_version) }}"
-  when: docker_compose_version is defined
 
 # make sure docker restarts to get the newest configuration
 - meta: flush_handlers
 
+- name: gather docker facts
+  setup:
+  when: "{{ ansible_docker0 is not defined or docker_config_result | changed }}"
+
 - name: pull useful images for future use
   command: docker pull {{ item }}
-  register: docker_result
+  register: docker_pull_result
   changed_when: '"Downloaded newer image for" in docker_result.stdout'
-  with_items:
-    - busybox
-    - ubuntu-debootstrap:14.04
+  with_items: "{{ docker_images_to_pull }}"
 
+- name: login to docker registry
+  command: "docker login -u {{ item.username }} -p {{ item.password }} -e {{ item.email }} {{ item.url }}"
+  with_items: "{{ docker_registries_to_login }}"

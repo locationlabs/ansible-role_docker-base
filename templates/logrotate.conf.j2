@@ -1,5 +1,5 @@
 /var/lib/docker/containers/*/*-json.log {
-    {{ docker_log_rotate_interval }}
+    size {{ docker_log_rotate_max_size }}
     rotate {{ docker_log_rotate_count }}
     missingok
     compress

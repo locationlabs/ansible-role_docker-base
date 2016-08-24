@@ -1,17 +1,6 @@
 ---
 
-# Should upstart be used to manage Docker containers?
-#
-# If upstart is not used, Docker containers should be run with
-# the "always" restart policy.
-#
-# If upstart is used, some extra dependencies will be required
-# (e.g. inotify-tools)
-
-docker_uses_upstart: yes
-
-
-# Version of docker-py library to use.
+# Version of docker-py library to use. "latest" to install the latest version.
 #
 # The 1.1.0 version is the most recent version that works with Docker 1.5.0;
 # it has also been shown to work with newer Docker versions (including 1.8.1).
@@ -21,31 +10,53 @@ docker_uses_upstart: yes
 #
 # Versions after 1.2.3 stopped working with the current Ansible docker module
 # (as of Ansible 1.9.2).
-
-docker_py_version: 1.2.3
-
-
-# Version of docker-rotate to use.
-#
-# https://github.com/locationlabs/docker-rotate
-docker_rotate_version: 2.0.1
-
-
-# Python regex of image names to remove. Use a '~' prefix for negative match.
-#
-# https://github.com/locationlabs/docker-rotate
-docker_rotate_containers_images_regex: ~busybox
-
-# Log rotate interval. Log files will be rotated after this interval.
-
-docker_log_rotate_interval: "daily"
-
-
-# Log files are rotated <log_rotate_count>  times  before  being  removed. 
-# If count is 0, old versions are removed rather then rotated.
-
-docker_log_rotate_count: 3
+docker_py_version: "1.9.0"
 
 # Version of docker-compose to use.
-# 'latest' to install the newest version
-docker_compose_version: latest
+# 'latest' to install the newest version, null or empty string to install nothing.
+docker_compose_version: "1.8.0"
+
+# Version of docker-rotate to use. Versions lower than 3.0 are not supported due
+# to API changes.
+#
+# https://github.com/locationlabs/docker-rotate
+docker_rotate_version: "3.0"
+
+# These properties govern Docker Rotate configuration. https://github.com/locationlabs/docker-rotate
+
+# Arguments to pass to "docker-rotate images" - pass False or empty string to not call command at
+# all .
+docker_rotate_images_arguments: "--keep 3 --name ~busybox --tag ~latest"
+
+# Should docker-rotate remove untagged images?
+docker_rotate_untagged_images: True
+
+# How long should docker-rotate retain exited containers? Specify a duration to keep containers
+# that long, "0" to remove them immediately, or an empty string to skip cleanup.
+docker_rotate_exited_containers: "1h"
+
+# How long should docker-rotate retain "created" containers? Specify a duration to keep containers
+# that long, "0" to remove them immediately, or an empty string to skip cleanup.
+# Note that old-style "data" containers are in the "created" state.
+docker_rotate_created_containers: ""
+
+# In Docker <1.8, log rotation is implemented using logrotate; in Docker 1.8+, default Docker
+# settings are used.
+
+# log rotation max size. Log files will rotate when they reach this size.
+docker_log_rotate_max_size: 10M
+
+# Log files are rotated <log_rotate_count> times before being removed.
+# If count is 0, old versions are removed rather then rotated.
+docker_log_rotate_count: 3
+
+# List of docker images to pull (at latest version) when role is run.
+docker_images_to_pull: []
+
+# list of Docker registries to log in to; this is a list of dicts, eg:
+# docker_registries_to_login:
+#   - username: foo
+#     password: foopwd
+#     email: foo@foo.com
+#     url: https://registry.foo.com
+docker_registries_to_login: []

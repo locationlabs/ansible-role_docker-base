@@ -1,0 +1,17 @@
+#!/bin/sh
+
+{% if docker_rotate_images_arguments | bool %}
+docker-rotate images {{ docker_rotate_images_arguments }}
+{% endif %}
+
+{% if docker_rotate_untagged_images %}
+docker-rotate untagged-images
+{% endif %}
+
+{% if docker_rotate_exited_containers != "" %}
+docker-rotate containers --exited {{ docker_rotate_exited_containers }}
+{% endif %}
+
+{% if docker_rotate_created_containers != "" %}
+docker-rotate containers --created {{ docker_rotate_created_containers }}
+{% endif %}
