@@ -59,12 +59,13 @@
   setup:
   when: "{{ ansible_docker0 is not defined or docker_config_result | changed }}"
 
-- name: pull useful images for future use
-  command: docker pull {{ item }}
-  register: docker_pull_result
-  changed_when: '"Downloaded newer image for" in docker_result.stdout'
-  with_items: "{{ docker_images_to_pull }}"
-
 - name: login to docker registry
   command: "docker login -u {{ item.username }} -p {{ item.password }} -e {{ item.email }} {{ item.url }}"
   with_items: "{{ docker_registries_to_login }}"
+
+- name: pull useful images for future use
+  command: docker pull {{ item }}
+  register: docker_pull_result
+  changed_when: '"Downloaded newer image for" in docker_pull_result.stdout'
+  with_items: "{{ docker_images_to_pull }}"
+

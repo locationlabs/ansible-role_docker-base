@@ -1,4 +1,9 @@
 # Release Change Log
+
+Version 3.0.1:
+ - bug fixes for login and pull behavior; fixed error in pull conditional check, and now
+   perform login *before* attempting to pull containers.
+
 Version 3.0:
  - use version 3.0+ of docker rotate
  - install docker-py, docker-compose, and dockerrotate in a single pip command to avoid
