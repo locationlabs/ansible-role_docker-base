@@ -37,6 +37,7 @@ This role expects the following variables:
  - `docker_registries_to_login`: list of maps, each map containing login credentials for a Docker
    registry. Expected keys are `username`, `password`, `email`, and `url`. The role will attempt to
    log into each registry described in the list. Default is empty.
+ - `requests_version`: if you want to explicitly install a specific version of requests library  
 
 Example for `docker_registries_to_login`:
 
