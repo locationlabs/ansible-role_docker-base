@@ -60,7 +60,3 @@ docker_images_to_pull: []
 #     email: foo@foo.com
 #     url: https://registry.foo.com
 docker_registries_to_login: []
-
-# Latest docker-py and docker-compose need different versions of requests so we have to explicitly
-# install a specific version of requests library by defining requests_version
-
