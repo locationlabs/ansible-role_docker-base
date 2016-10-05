@@ -20,8 +20,7 @@ docker_compose_version: "1.8.0"
 # There are times when we will need to be explicit about versions of other libraries
 # See README.md for detals.
 # Empty list means don't specify any additional versions
-docker_base_extra_python_requirements:
-  - "requests==2.7.0"
+docker_base_extra_python_requirements: []
 
 # Version of docker-rotate to use. Versions lower than 3.0 are not supported due
 # to API changes.
