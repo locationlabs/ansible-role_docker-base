@@ -1,8 +1,8 @@
-{% if requests_version is defined %}
-requests{{ '' if requests_version == 'latest' else ('==' + requests_version) }}
-{% endif%}
 docker-py{{ '' if docker_py_version == 'latest' else ('==' + docker_py_version) }}
 dockerrotate=={{ docker_rotate_version }}
 {% if docker_compose_version is not none and docker_compose_version != '' %}
 docker-compose{{ '' if docker_compose_version == 'latest' else ('==' + docker_compose_version) }}
 {% endif %}
+{% for item in docker_base_extra_python_requirements %}
+{{ item }}
+{% endfor %}
