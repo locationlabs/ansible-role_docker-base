@@ -16,6 +16,12 @@ docker_py_version: "1.9.0"
 # 'latest' to install the newest version, null or empty string to install nothing.
 docker_compose_version: "1.8.0"
 
+# Extra python requirements.
+# There are times when we will need to be explicit about versions of other libraries
+# See README.md for detals.
+# Empty list means don't specify any additional versions
+docker_base_extra_python_requirements: []
+
 # Version of docker-rotate to use. Versions lower than 3.0 are not supported due
 # to API changes.
 #
