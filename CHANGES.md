@@ -1,5 +1,8 @@
 # Release Change Log
 
+Version 3.0.2:
+ - add variable to define extra python dependencies in case of sub dependency conflicts
+
 Version 3.0.1:
  - bug fixes for login and pull behavior; fixed error in pull conditional check, and now
    perform login *before* attempting to pull containers.
