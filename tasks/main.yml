@@ -1,10 +1,10 @@
 ---
 
 # The role knows how to write docker_rotate commands for the version 3.0 API, not for earlier
-# versions. 
+# versions.
 - name: check minimum docker_rotate version
   fail: msg="specified docker_rotate version is {{ docker_rotate_version }}, must be at least 3.0"
-  when: "{{ docker_rotate_version | version_compare('3.0', '<') }}"
+  when: docker_rotate_version | version_compare('3.0', '<')
 
 # Note escaping required here - we need to pass "{{ .Server.Version }}" to Docker without it
 # being escaped by Ansible. However, normal ways of escaping it will result in the command
@@ -38,11 +38,11 @@
 
 - name: push logrotate config file for docker container json logs
   template: src=logrotate.conf.j2 dest=/etc/logrotate.d/docker
-  when: "{{ installed_docker_version | version_compare('1.8', '<') }}"
+  when: installed_docker_version | version_compare('1.8', '<')
 
 - name: make sure docker logrotate config is removed
   file: state=absent dest=/etc/logrotate.d/docker
-  when: "{{ installed_docker_version | version_compare('1.8', '>=') }}"
+  when: installed_docker_version | version_compare('1.8', '>=')
 
 - name: install docker zombie volumes cleanup cron script
   copy: src=clear-zombie-docker-data-dirs dest=/etc/cron.daily/ mode=755
@@ -57,7 +57,7 @@
 
 - name: gather docker facts
   setup:
-  when: "{{ ansible_docker0 is not defined or docker_config_result | changed }}"
+  when: ansible_docker0 is not defined or docker_config_result | changed
 
 - name: login to docker registry
   command: "docker login -u {{ item.username }} -p {{ item.password }} -e {{ item.email }} {{ item.url }}"
