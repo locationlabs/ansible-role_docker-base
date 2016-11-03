@@ -1,5 +1,10 @@
 # Release Change Log
 
+Version 4.0:
+ - dropped support for "docker_opts", "docker_log_rotate_max_size", and "docker_log_rotate_count"
+   variables. Changing docker default configuration is no longer the repsonsibility of this
+   role.
+
 Version 3.0.2:
  - add variable to define extra python dependencies in case of sub dependency conflicts
 

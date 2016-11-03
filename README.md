@@ -39,9 +39,6 @@ This role expects the following variables:
    `docker_rotate_created_containers`: if non-empty, created containers - that is, containers that
    have been created but never started - at least this old will be removed when daily cleanup runs.
    Default is empty.
- - `docker_log_rotate_max_size`: Docker's JSON logs for containers will be rotated when they reach
-   this size. Default 10M.
- - `docker_log_rotate_count`: log files will be rotated this number of times before removal.
  - `docker_images_to_pull`: list of Docker images; images with these names will be "docker pull"ed
    when the role is run. Default is empty.
  - `docker_registries_to_login`: list of maps, each map containing login credentials for a Docker

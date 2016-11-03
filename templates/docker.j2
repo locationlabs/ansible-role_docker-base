@@ -1,9 +1,0 @@
-# Docker Upstart and SysVinit configuration file
-
-DOCKER_OPTS="
-   {% if docker_opts is defined %}
-      {{ docker_opts }}
-   {%- endif %}
-   {% if docker_version | version_compare('1.8', '>=') -%}
-      --log-opt max-size={{ docker_log_rotate_max_size }} --log-opt max-file={{ docker_log_rotate_count }}
-   {%- endif %}"
