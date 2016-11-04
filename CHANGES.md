@@ -2,8 +2,10 @@
 
 Version 4.0:
  - dropped support for "docker_opts", "docker_log_rotate_max_size", and "docker_log_rotate_count"
-   variables. Changing docker default configuration is no longer the repsonsibility of this
-   role.
+   variables. Changing docker default configuration is no longer the responsibility of this
+   role. (It's intended that this role be used with ansible-role_docker v2.2+, which now
+   supports passing options to Docker on startup.)
+ - see "Migration Notes" in README.md
 
 Version 3.0.2:
  - add variable to define extra python dependencies in case of sub dependency conflicts
