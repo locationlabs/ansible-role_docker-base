@@ -36,28 +36,13 @@
 - name: install docker-rotate cron script
   template: src=docker-rotate.j2 dest=/etc/cron.daily/docker-rotate mode=755
 
-- name: push logrotate config file for docker container json logs
-  template: src=logrotate.conf.j2 dest=/etc/logrotate.d/docker
-  when: installed_docker_version | version_compare('1.8', '<')
-
+# docker log rotation is now managed by Docker (since Docker 1.8). We no longer deal with
+# it in this role. Clean up any old file that might still be around.
 - name: make sure docker logrotate config is removed
   file: state=absent dest=/etc/logrotate.d/docker
-  when: installed_docker_version | version_compare('1.8', '>=')
 
 - name: install docker zombie volumes cleanup cron script
   copy: src=clear-zombie-docker-data-dirs dest=/etc/cron.daily/ mode=755
-
-- name: push docker configuration
-  template: src=docker.j2 dest=/etc/default/docker
-  register: docker_config_result
-  notify: restart docker
-
-# make sure docker restarts to get the newest configuration
-- meta: flush_handlers
-
-- name: gather docker facts
-  setup:
-  when: ansible_docker0 is not defined or docker_config_result | changed
 
 - name: login to docker registry
   command: "docker login -u {{ item.username }} -p {{ item.password }} -e {{ item.email }} {{ item.url }}"
