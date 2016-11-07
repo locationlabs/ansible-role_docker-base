@@ -39,9 +39,6 @@ This role expects the following variables:
    `docker_rotate_created_containers`: if non-empty, created containers - that is, containers that
    have been created but never started - at least this old will be removed when daily cleanup runs.
    Default is empty.
- - `docker_log_rotate_max_size`: Docker's JSON logs for containers will be rotated when they reach
-   this size. Default 10M.
- - `docker_log_rotate_count`: log files will be rotated this number of times before removal.
  - `docker_images_to_pull`: list of Docker images; images with these names will be "docker pull"ed
    when the role is run. Default is empty.
  - `docker_registries_to_login`: list of maps, each map containing login credentials for a Docker
@@ -66,7 +63,7 @@ Specifically:
    Ansible < 2.0.
 
 ## Dependencies
-In order to run this role:
+In order to run this role against a host:
  - python and pip must be installed.
  - docker engine must be installed. For a role that installs docker engine, see
    [here](https://github.com/locationlabs/ansible-role_docker)
@@ -82,3 +79,37 @@ We should update `docker_base_extra_python_requirements` as needed when changing
 what we install with pip. Especially if we change default versions of
 `docker_py_version` or `docker_compose_version` since the version of `requests`
 compatible with both could change when this happens.
+
+## Migration Notes
+
+### To 4.0
+In v4.0 the `docker_opts`, docker_log_rotate_max_size`, and `docker_log_rotate_count`
+variables were removed. This role no longer directly supports log rotation or docker
+configuration. However, option setting functionality was added to the
+`ansible-role_docker` role in v2.2.
+
+For deployment projects using both roles, this means:
+ - you should migrate to v4.0 and v2.2 at the same time
+ - Any command-line options you were specifying in `docker_opts` for this role should
+   be specified in the `docker_daemon_flags` variable used by the `ansible-role_docker`
+   role.
+ - If you were using the log rotation functionality here, you should add equivalent
+   `\--log-opt` sections to `docker_daemon_flags`
+
+e.g. if your old variables were:
+
+    docker_opts: "--storage-driver=aufs"
+    docker_log_rotate_max_size: 10M
+    docker_log_rotate_count: 3
+
+then your new config could be:
+
+    docker_daemon_flags: >
+      --storage-driver=aufs
+      --log-opt max-size=10M
+      --log-opt max-file=3
+
+IMPORTANT: note that versions of Docker before 1.8 don't support `\--log-opt`, so these
+roles no longer support log rotation for <1.8 versions of Docker. In that case, you can
+keep using old versions of these roles, or have your deploy project write the
+`/etc/logrotate.d/docker` file itself.

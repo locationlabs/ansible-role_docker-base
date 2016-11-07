@@ -46,16 +46,6 @@ docker_rotate_exited_containers: "1h"
 # Note that old-style "data" containers are in the "created" state.
 docker_rotate_created_containers: ""
 
-# In Docker <1.8, log rotation is implemented using logrotate; in Docker 1.8+, default Docker
-# settings are used.
-
-# log rotation max size. Log files will rotate when they reach this size.
-docker_log_rotate_max_size: 10M
-
-# Log files are rotated <log_rotate_count> times before being removed.
-# If count is 0, old versions are removed rather then rotated.
-docker_log_rotate_count: 3
-
 # List of docker images to pull (at latest version) when role is run.
 docker_images_to_pull: []
 
