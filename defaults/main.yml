@@ -26,7 +26,7 @@ docker_base_extra_python_requirements: []
 # to API changes.
 #
 # https://github.com/locationlabs/docker-rotate
-docker_rotate_version: "3.0"
+docker_rotate_version: "3.0.1"
 
 # These properties govern Docker Rotate configuration. https://github.com/locationlabs/docker-rotate
 
