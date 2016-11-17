@@ -1,5 +1,8 @@
 # Release Change Log
 
+Version 4.0.1:
+ - fixed parameter handling for docker-rotate file
+
 Version 4.0:
  - dropped support for "docker_opts", "docker_log_rotate_max_size", and "docker_log_rotate_count"
    variables. Changing docker default configuration is no longer the responsibility of this
